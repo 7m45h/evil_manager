@@ -49,7 +49,7 @@ def addNew():
 
 def listAll():
     for row in _cur.execute("SELECT rowid, imdb, name, year, hash FROM movies").fetchall():
-        print(f"[{row[0]:04d}]  {row[1]}  {row[2]:.<45s}  {row[3]:4d}  {row[4]}")
+        print(f"[{row[0]:04d}]  {row[1]}  {row[2]:.<55s}  {row[3]:4d}  {row[4]}")
 
 def deleteRow():
     imdb = input("[?] imdb: ")
