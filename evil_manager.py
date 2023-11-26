@@ -5,7 +5,7 @@ import sqlite3
 import argparse
 
 _parser = argparse.ArgumentParser(description="manage evil databse")
-_parser.add_argument("mode", choices=["n", "a", "l", "d", "o"], help="n: new table a: add l: list all d: delete o: html output")
+_parser.add_argument("mode", choices=['n', 'a', 'l', 'e', 'd', 'o'], help="n: new table a: add l: list all e: edit d: delete o: html output")
 args = _parser.parse_args()
 
 _con = sqlite3.connect("./evil.db")
@@ -26,10 +26,10 @@ def addNew():
         hash = input("    hash: ").upper()
         poster = input("    poster: ")
         print("[!] summary")
-        print(f"    hash: {imdb}")
+        print(f"    imdb: {imdb}")
         print(f"    name: {name}")
         print(f"    year: {year}")
-        print(f"    imdb: {hash}")
+        print(f"    hash: {hash}")
         print(f"    imge: {poster}")
 
         with open(poster, "rb") as image:
@@ -50,6 +50,40 @@ def addNew():
 def listAll():
     for row in _cur.execute("SELECT rowid, imdb, name, year, hash FROM movies").fetchall():
         print(f"[{row[0]:04d}]  {row[1]}  {row[2]:.<55s}  {row[3]:4d}  {row[4]}")
+
+def editRow():
+    for row in _cur.execute("SELECT rowid, imdb, name FROM movies").fetchall():
+        print(f"[{row[0]:04d}] {row[1]} {row[2]}")
+
+    rowid = input("\n[?] rowid: ")
+    row = _cur.execute("SELECT imdb, name, year, hash FROM movies WHERE rowid=?", (rowid,)).fetchone()
+
+    if row is None:
+        print("[!] id not found")
+    else:
+        imdb = input("    imdb: ")
+        name = input("    name: ")
+        year = input("    year: ")
+        hash = input("    hash: ").upper()
+        poster = input("    poster: ")
+
+        with open(poster, "rb") as image:
+            poster_bytes = image.read();
+
+        print("\n[!] summary")
+        print(f"    imdb: {row[0]: >42s} -> {imdb}")
+        print(f"    name: {row[1]: >42s} -> {name}")
+        print(f"    year: {row[2]: 42d} -> {year}")
+        print(f"    hash: {row[3]: >42s} -> {hash}")
+        print(f"    imge: {'current': >42s} -> {poster}")
+
+        edit = input("\n[?] edit (y/n): ")
+        if edit == 'y':
+            _cur.execute("UPDATE movies SET imdb=?, name=?, year=?, hash=?, poster=? WHERE rowid=?", (imdb, name, year, hash, poster_bytes, rowid))
+            _con.commit()
+            print("[!] done")
+        else:
+            print("[!] did not edited")
 
 def deleteRow():
     imdb = input("[?] imdb: ")
@@ -82,16 +116,20 @@ def htmlOutput():
         
         print(f"""          <a href="https://www.imdb.com/title/{imdb}/" target="_blank">\n            <img src="{poster_path}" alt="{name} {year}" title="{name} {year}" loading="lazy">\n          </a>""")
 
-if args.mode == "n":
+if args.mode == 'n':
     newDatabase()
-elif args.mode == "d":
-    deleteRow()
-elif args.mode == "a":
+elif args.mode == 'a':
     addNew()
-elif args.mode == "o":
+elif args.mode == 'l':
+    listAll()
+elif args.mode == 'e':
+    editRow()
+elif args.mode == 'd':
+    deleteRow()
+elif args.mode == 'o':
     htmlOutput()
 else:
-    listAll()
+    print("[!] error")
 
 _con.close()
 exit()
