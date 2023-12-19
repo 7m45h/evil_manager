@@ -113,8 +113,8 @@ def htmlOutput():
             poster_path = f"./images/{imdb}.jpg"
             with open(f"./outputs/{imdb}.jpg", "wb") as image:
                 image.write(poster_bytes)
-        
-        print(f"""          <a href="https://www.imdb.com/title/{imdb}/" target="_blank">\n            <img src="{poster_path}" alt="{name} {year}" title="{name} {year}" loading="lazy">\n          </a>""")
+
+        print(f"""        <figure>\n          <img src="./images/{imdb}.jpg" alt="{name} {year}" loading="lazy">\n          <figcaption>\n            <a class="anc-ext" href="https://www.imdb.com/title/{imdb}/" target="_blank">{name} {year}</a>\n          </figcaption>\n        </figure>""")
 
 if args.mode == 'n':
     newDatabase()
