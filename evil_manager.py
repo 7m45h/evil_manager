@@ -5,7 +5,7 @@ import sqlite3
 import argparse
 
 _parser = argparse.ArgumentParser(description="manage evil databse")
-_parser.add_argument("mode", choices=['n', 'a', 'l', 'e', 'd', 'o'], help="n: new table a: add l: list all e: edit d: delete o: html output")
+_parser.add_argument("mode", choices=['n', 'a', 'l', 'e', 'd', 'o'], help="n: new table a: add l: list all e: edit d: delete o: toml output")
 args = _parser.parse_args()
 
 _con = sqlite3.connect("./evil.db")
@@ -99,22 +99,18 @@ def deleteRow():
     else:
         print("[!] did not deleted")
 
-def htmlOutput():
-    for row in _cur.execute("SELECT imdb, name, year, hash, poster FROM movies ORDER BY name").fetchall():
-        imdb = row[0]
-        name = row[1]
-        year = row[2]
-        hash = row[3]
-        poster_bytes = row[4]
+def tomlOutput():
+    with open("movies.toml", "w") as tFile:
+        for row in _cur.execute("SELECT imdb, name, year, hash, poster FROM movies ORDER BY name").fetchall():
+            imdb = row[0]
+            name = row[1]
+            year = row[2]
+            hash = row[3]
+            poster_bytes = row[4]
 
-        if poster_bytes is None:
-            poster_path = "./images/placeholder.jpg"
-        else:
-            poster_path = f"./images/{imdb}.jpg"
-            with open(f"./outputs/{imdb}.jpg", "wb") as image:
-                image.write(poster_bytes)
-
-        print(f"""        <a href="https://www.imdb.com/title/{imdb}/" title="{name} {year}" target="_blank">\n          <img src="{poster_path}" alt="{name} {year}" loading="lazy">\n        </a>""")
+            tFile.write(f"""[[movies]]\nimdb = "{imdb}"\nname = "{name}"\nyear = "{year}"\n""")
+            with open(f"./outputs/{imdb}.jpg", "wb") as pFile:
+                pFile.write(poster_bytes)
 
 if args.mode == 'n':
     newDatabase()
@@ -127,7 +123,7 @@ elif args.mode == 'e':
 elif args.mode == 'd':
     deleteRow()
 elif args.mode == 'o':
-    htmlOutput()
+    tomlOutput()
 else:
     print("[!] error")
 
