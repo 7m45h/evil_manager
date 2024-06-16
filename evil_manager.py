@@ -6,7 +6,7 @@ import argparse
 
 PARSER = argparse.ArgumentParser(description="manage evil databse")
 PARSER.add_argument("mode", choices=['n', 'a', 'l', 'e', 'd', 'o'], help="n: new table a: add l: list all e: edit d: delete o: toml output")
-args = PARSER.parse_args()
+ARGS = PARSER.parse_args()
 
 CON = sqlite3.connect("./evil.db")
 CUR = CON.cursor()
@@ -112,17 +112,17 @@ def tomlOutput():
             with open(f"./outputs/{imdb}.jpg", "wb") as pFile:
                 pFile.write(poster_bytes)
 
-if args.mode == 'n':
+if ARGS.mode == 'n':
     newDatabase()
-elif args.mode == 'a':
+elif ARGS.mode == 'a':
     addNew()
-elif args.mode == 'l':
+elif ARGS.mode == 'l':
     listAll()
-elif args.mode == 'e':
+elif ARGS.mode == 'e':
     editRow()
-elif args.mode == 'd':
+elif ARGS.mode == 'd':
     deleteRow()
-elif args.mode == 'o':
+elif ARGS.mode == 'o':
     tomlOutput()
 else:
     print("[!] error")
