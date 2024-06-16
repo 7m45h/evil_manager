@@ -4,22 +4,22 @@ import string
 import sqlite3
 import argparse
 
-_parser = argparse.ArgumentParser(description="manage evil databse")
-_parser.add_argument("mode", choices=['n', 'a', 'l', 'e', 'd', 'o'], help="n: new table a: add l: list all e: edit d: delete o: toml output")
-args = _parser.parse_args()
+PARSER = argparse.ArgumentParser(description="manage evil databse")
+PARSER.add_argument("mode", choices=['n', 'a', 'l', 'e', 'd', 'o'], help="n: new table a: add l: list all e: edit d: delete o: toml output")
+args = PARSER.parse_args()
 
-_con = sqlite3.connect("./evil.db")
-_cur = _con.cursor()
+CON = sqlite3.connect("./evil.db")
+CUR = CON.cursor()
 
 def newDatabase():
-    _cur.execute("CREATE TABLE IF NOT EXISTS movies(imdb TEXT PRIMARY KEY, name TEXT, year INTEGER, hash TEXT NULL, poster BLOB NULL)")
-    _con.commit()
+    CUR.execute("CREATE TABLE IF NOT EXISTS movies(imdb TEXT PRIMARY KEY, name TEXT, year INTEGER, hash TEXT NULL, poster BLOB NULL)")
+    CON.commit()
     print("[!] done")
 
 def addNew():
     print("[?]")
     imdb = input("    imdb: ")
-    existing_row = _cur.execute("SELECT imdb, name, year FROM movies WHERE imdb=?", (imdb,)).fetchone()
+    existing_row = CUR.execute("SELECT imdb, name, year FROM movies WHERE imdb=?", (imdb,)).fetchone()
     if existing_row is None:
         name = input("    name: ")
         year = input("    year: ")
@@ -37,8 +37,8 @@ def addNew():
 
         write = input("[?] write to db (y/n): ")
         if write == "y":
-            _cur.execute("INSERT INTO movies VALUES (?, ?, ?, ?, ?)", (imdb, name, year, hash, poster_bytes))
-            _con.commit()
+            CUR.execute("INSERT INTO movies VALUES (?, ?, ?, ?, ?)", (imdb, name, year, hash, poster_bytes))
+            CON.commit()
         else:
             print("\n[!] did not wrote to db")
     else:
@@ -48,15 +48,15 @@ def addNew():
         print(f"\n    year: {existing_row[2]}")
 
 def listAll():
-    for row in _cur.execute("SELECT rowid, imdb, name, year, hash FROM movies").fetchall():
+    for row in CUR.execute("SELECT rowid, imdb, name, year, hash FROM movies").fetchall():
         print(f"[{row[0]:04d}]  {row[1]: <10s}  {row[2]:.<55s}  {row[3]:4d}  {row[4]}")
 
 def editRow():
-    for row in _cur.execute("SELECT rowid, imdb, name FROM movies").fetchall():
+    for row in CUR.execute("SELECT rowid, imdb, name FROM movies").fetchall():
         print(f"[{row[0]:04d}] {row[1]} {row[2]}")
 
     rowid = input("\n[?] rowid: ")
-    row = _cur.execute("SELECT imdb, name, year, hash FROM movies WHERE rowid=?", (rowid,)).fetchone()
+    row = CUR.execute("SELECT imdb, name, year, hash FROM movies WHERE rowid=?", (rowid,)).fetchone()
 
     if row is None:
         print("[!] id not found")
@@ -79,29 +79,29 @@ def editRow():
 
         edit = input("\n[?] edit (y/n): ")
         if edit == 'y':
-            _cur.execute("UPDATE movies SET imdb=?, name=?, year=?, hash=?, poster=? WHERE rowid=?", (imdb, name, year, hash, poster_bytes, rowid))
-            _con.commit()
+            CUR.execute("UPDATE movies SET imdb=?, name=?, year=?, hash=?, poster=? WHERE rowid=?", (imdb, name, year, hash, poster_bytes, rowid))
+            CON.commit()
             print("[!] done")
         else:
             print("[!] did not edited")
 
 def deleteRow():
     imdb = input("[?] imdb: ")
-    row = _cur.execute("SELECT rowid, name, year FROM movies WHERE imdb=?", (imdb,)).fetchone()
+    row = CUR.execute("SELECT rowid, name, year FROM movies WHERE imdb=?", (imdb,)).fetchone()
     print("[!]")
     print(f"[{row[0]}]\t{row[1]}\t{row[2]}")
     delete = input("[?] delete (y/n): ")
 
     if delete == "y":
-        _cur.execute("DELETE FROM movies WHERE imdb=?", (imdb,))
-        _con.commit()
+        CUR.execute("DELETE FROM movies WHERE imdb=?", (imdb,))
+        CON.commit()
         print("[!] done")
     else:
         print("[!] did not deleted")
 
 def tomlOutput():
     with open("movies.toml", "w") as tFile:
-        for row in _cur.execute("SELECT imdb, name, year, hash, poster FROM movies ORDER BY name").fetchall():
+        for row in CUR.execute("SELECT imdb, name, year, hash, poster FROM movies ORDER BY name").fetchall():
             imdb = row[0]
             name = row[1]
             year = row[2]
@@ -127,5 +127,5 @@ elif args.mode == 'o':
 else:
     print("[!] error")
 
-_con.close()
+CON.close()
 exit()
