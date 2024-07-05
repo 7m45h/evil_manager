@@ -38,7 +38,7 @@ def addMovie():
             with open(posterPath, "rb") as posterFile:
                 posterBytes = posterFile.read()
         except FileNotFoundError:
-            print(f"[!] poster path: {poster_path} does not exist")
+            print(f"[!] poster path: {posterPath} does not exist")
         except Exception as e:
             print(f"[!] error: {e}")
 
