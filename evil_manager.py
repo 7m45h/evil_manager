@@ -56,26 +56,34 @@ def editRow():
         print(f"[{row[0]:04d}] {row[1]} {row[2]}")
 
     rowid = input("\n[?] rowid: ")
-    row = CUR.execute("SELECT imdb, name, year, hash FROM movies WHERE rowid=?", (rowid,)).fetchone()
+    row = CUR.execute("SELECT imdb, name, year, hash, poster FROM movies WHERE rowid=?", (rowid,)).fetchone()
 
     if row is None:
         print("[!] id not found")
     else:
-        imdb = input("    imdb: ")
-        name = input("    name: ")
-        year = input("    year: ")
-        hash = input("    hash: ").upper()
-        poster = input("    poster: ")
+        imdb = row[0] if not (imdb := input("    imdb: ")) else imdb
+        name = row[1] if not (name := input("    name: ")) else name
+        year = row[2] if not (year := input("    year: ")) else year
+        hash = row[3] if not (hash := input("    hash: ")) else hash.upper()
+        poster_path = input("    poster: ")
 
-        with open(poster, "rb") as image:
-            poster_bytes = image.read();
+        if not poster_path:
+            poster_bytes = row[4]
+        else:
+            try:
+                image_file = open(poster_path, "rb")
+                poster_bytes = image_file.read()
+                image_file.close()
+            except FileNotFoundError:
+                print(f"[!] poster path: {poster_path} does not exist")
+            except Exception as e:
+                print(f"[!] error: {e}")
 
         print("\n[!] summary")
-        print(f"    imdb: {row[0]: >42s} -> {imdb}")
-        print(f"    name: {row[1]: >42s} -> {name}")
-        print(f"    year: {row[2]: 42d} -> {year}")
-        print(f"    hash: {row[3]: >42s} -> {hash}")
-        print(f"    imge: {'current': >42s} -> {poster}")
+        print(f"    imdb: {row[0]} -> {imdb}")
+        print(f"    name: {row[1]} -> {name}")
+        print(f"    year: {row[2]} -> {year}")
+        print(f"    hash: {row[3]} -> {hash}")
 
         edit = input("\n[?] edit (y/n): ")
         if edit == 'y':
