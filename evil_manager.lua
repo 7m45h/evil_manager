@@ -1,31 +1,31 @@
 #! /usr/bin/env lua
 
-local argparse = require('argparse')
-local sqlite   = require('lsqlite3')
+local argparse = require("argparse")
+local sqlite   = require("lsqlite3")
 
 local parser = argparse()
-  :name 'evil_manager'
-  :description 'manage evil databse'
-  :epilog 'find more @ https://github.com/7m45h/evil_manager'
+  :name "evil_manager"
+  :description "manage evil databse"
+  :epilog "find more @ https://github.com/7m45h/evil_manager"
 
 parser:argument()
-  :name 'mode'
-  :description 'n: new table a: add l: list all e: edit d: delete o: toml output'
+  :name "mode"
+  :description "n: new table a: add l: list all e: edit d: delete o: toml output"
   :choices { 'n', 'a', 'l' }
 
 local args = parser:parse()
 
-local db = sqlite.open('./evil.db')
+local db = sqlite.open("./evil.db")
 
 local function create_table()
-  db:execute('CREATE TABLE IF NOT EXISTS movies(imdb TEXT PRIMARY KEY, name TEXT, year INTEGER, hash TEXT NULL, poster BLOB NULL)')
+  db:execute("CREATE TABLE IF NOT EXISTS movies(imdb TEXT PRIMARY KEY, name TEXT, year INTEGER, hash TEXT NULL, poster BLOB NULL)")
 end
 
 local function add_movie()
-  print('[?]')
-  io.write('    imdb: ')
+  print("[?]")
+  io.write("    imdb: ")
   local imdb = io.read()
-  local stmt = db:prepare('SELECT imdb, name, year FROM movies WHERE imdb=?')
+  local stmt = db:prepare("SELECT imdb, name, year FROM movies WHERE imdb=?")
   stmt:bind(1, imdb)
   local stmt_status = stmt:step()
   if stmt_status == sqlite.ROW then
@@ -38,13 +38,13 @@ local function add_movie()
 
   elseif stmt_status == sqlite.DONE then
     stmt:finalize()
-    io.write('    name: ')
+    io.write("    name: ")
     local name = io.read()
-    io.write('    year: ')
+    io.write("    year: ")
     local year = io.read()
-    io.write('    hash: ')
+    io.write("    hash: ")
     local hash = string.upper(io.read())
-    io.write('    poster_path: ')
+    io.write("    poster_path: ")
     local poster_path = io.read()
 
     print("\n[!] summary")
@@ -62,7 +62,7 @@ local function add_movie()
     end
 
     if poster_bytes then
-      io.write('[?] write to db (y/N): ')
+      io.write("[?] write to db (y/N): ")
       local write = io.read()
       if write == 'y' then
         stmt = db:prepare("INSERT INTO movies VALUES (?, ?, ?, ?, ?)")
@@ -84,8 +84,8 @@ local function add_movie()
 end
 
 local function list_movies()
-  for rowid, imdb, name, year, hash in db:urows('SELECT rowid, imdb, name, year, hash FROM movies') do
-    print(string.format('[%04d]  %-10s  %-55s  %4d  %s', rowid, imdb, name, year, hash))
+  for rowid, imdb, name, year, hash in db:urows("SELECT rowid, imdb, name, year, hash FROM movies") do
+    print(string.format("[%04d]  %-10s  %-55s  %4d  %s", rowid, imdb, name, year, hash))
   end
 end
 
@@ -100,7 +100,7 @@ local action = modes[args.mode]
 if action then
   action()
 else
-  print('[!] undefined mode')
+  print("[!] undefined mode")
 end
 
 db:close()
