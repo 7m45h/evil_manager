@@ -3,6 +3,8 @@
 local argparse = require("argparse")
 local sqlite   = require("lsqlite3")
 
+local file_manager = require("file_manager")
+
 local parser = argparse()
   :name "evil_manager"
   :description "manage evil databse"
@@ -15,7 +17,7 @@ parser:argument()
 
 local args = parser:parse()
 
-local db = sqlite.open("./evil.db")
+local db = sqlite.open("../evil.db")
 
 local function create_table()
   db:execute("CREATE TABLE IF NOT EXISTS movies(imdb TEXT PRIMARY KEY, name TEXT, year INTEGER, hash TEXT NULL, poster BLOB NULL)")
@@ -54,12 +56,7 @@ local function add_movie()
     print(string.format("    hash: %s", hash))
     print(string.format("    imge: %s", poster_path))
 
-    local poster_file = assert(io.open(poster_path, "rb"))
-    local poster_bytes
-    if poster_file then
-      poster_bytes = poster_file:read("a")
-      poster_file:close()
-    end
+    local poster_bytes = file_manager.read(poster_path)
 
     if poster_bytes then
       io.write("[?] write to db (y/N): ")
@@ -122,11 +119,7 @@ local function edit_movie()
     if poster_path == '' then
       poster_bytes = existing_row.poster
     else
-      local poster_file = assert(io.open(poster_path, "rb"))
-      if poster_file then
-        poster_bytes = poster_file:read("a")
-        poster_file:close()
-      end
+      poster_bytes = file_manager.read(poster_path)
     end
 
     print("\n[!] summary")
@@ -191,20 +184,12 @@ local function delete_movie()
 end
 
 local function export_all_movies()
-  local toml_file = assert(io.open("./movies.toml", "w"))
-  if toml_file then
-    local toml_output = ''
-    for imdb, name, year, poster_bytes in db:urows("SELECT imdb, name, year, poster FROM movies ORDER BY name") do
-      toml_output = toml_output .. string.format('[[movies]]\nimdb = "%s"\nname = "%s"\nyear = "%d"\n', imdb, name, year)
-      local poster_file = assert(io.open(string.format("./outputs/%s.jpg", imdb), "wb"))
-      if poster_file then
-        poster_file:write(poster_bytes)
-        poster_file:close()
-      end
-    end
-    toml_file:write(toml_output)
-    toml_file:close()
+  local toml_output = ''
+  for imdb, name, year, poster_bytes in db:urows("SELECT imdb, name, year, poster FROM movies ORDER BY name") do
+    toml_output = toml_output .. string.format('[[movies]]\nimdb = "%s"\nname = "%s"\nyear = "%d"\n', imdb, name, year)
+    file_manager.write(string.format("../outputs/%s.jpg", imdb), poster_bytes)
   end
+  file_manager.write("../movies.toml", toml_output)
 end
 
 local modes = {
