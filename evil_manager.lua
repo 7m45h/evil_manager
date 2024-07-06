@@ -11,7 +11,7 @@ local parser = argparse()
 parser:argument()
   :name "mode"
   :description "n: new table a: add l: list all e: edit d: delete o: toml output"
-  :choices { 'n', 'a', 'l' }
+  :choices { 'n', 'a', 'l', 'd' }
 
 local args = parser:parse()
 
@@ -89,10 +89,40 @@ local function list_movies()
   end
 end
 
+local function delete_movie()
+  io.write("[?] rowid: ")
+  local rowid = io.read()
+  local stmt = db:prepare("SELECT imdb, name, year FROM movies WHERE rowid=?")
+  stmt:bind(1, rowid)
+  local stmt_status = stmt:step()
+  if stmt_status == sqlite.ROW then
+    local existing_row = stmt:get_named_values()
+    stmt:finalize()
+    print(string.format("[!] %s %s %d", existing_row.imdb, existing_row.name, existing_row.year))
+    io.write("[?] delete (y/N): ")
+    local delete = io.read()
+    if delete == 'y' then
+      stmt = db:prepare("DELETE FROM movies WHERE rowid=?")
+      stmt:bind(1, rowid)
+      stmt_status = stmt:step()
+      stmt:finalize()
+      if stmt_status == sqlite.DONE then
+        print("[!] done")
+      else
+        print("[!] deletion failed")
+      end
+    end
+  else
+    stmt:finalize()
+    print("[!] movie not found")
+  end
+end
+
 local modes = {
   n = create_table,
   a = add_movie,
-  l = list_movies
+  l = list_movies,
+  d = delete_movie
 }
 
 local action = modes[args.mode]
