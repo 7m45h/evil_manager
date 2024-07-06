@@ -11,7 +11,7 @@ local parser = argparse()
 parser:argument()
   :name "mode"
   :description "n: new table a: add l: list all e: edit d: delete o: toml output"
-  :choices { 'n', 'a', 'l', 'd', 'o' }
+  :choices { 'n', 'a', 'l', 'e', 'd', 'o' }
 
 local args = parser:parse()
 
@@ -89,6 +89,78 @@ local function list_movies()
   end
 end
 
+local function edit_movie()
+  for rowid, imdb, name, year in db:urows("SELECT rowid, imdb, name, year FROM movies") do
+    print(string.format("[%04d]  %-10s  %-55s  %4d", rowid, imdb, name, year))
+  end
+
+  io.write("\n[?] rowid: ")
+  local rowid = io.read()
+  local stmt = db:prepare("SELECT imdb, name, year, hash, poster FROM movies WHERE rowid=?")
+  stmt:bind(1, rowid)
+  local stmt_status = stmt:step()
+  if stmt_status == sqlite.ROW then
+    local existing_row = stmt:get_named_values()
+    stmt:finalize()
+    io.write("    imdb: ")
+    local imdb = io.read()
+    io.write("    name: ")
+    local name = io.read()
+    io.write("    year: ")
+    local year = io.read()
+    io.write("    hash: ")
+    local hash = string.upper(io.read())
+    io.write("    poster_path: ")
+    local poster_path = io.read()
+
+    if imdb == '' then imdb = existing_row.imdb end
+    if name == '' then name = existing_row.name end
+    if year == '' then year = existing_row.year end
+    if hash == '' then hash = existing_row.hash end
+
+    local poster_bytes
+    if poster_path == '' then
+      poster_bytes = existing_row.poster
+    else
+      local poster_file = assert(io.open(poster_path, "rb"))
+      if poster_file then
+        poster_bytes = poster_file:read("a")
+        poster_file:close()
+      end
+    end
+
+    print("\n[!] summary")
+    print(string.format("    imdb: %s -> %s", existing_row.imdb, imdb))
+    print(string.format("    name: %s -> %s", existing_row.name, name))
+    print(string.format("    year: %d -> %d", existing_row.year, year))
+    print(string.format("    hash: %s -> %s", existing_row.hash, hash))
+
+    io.write("\n[?] edit (y/N): ")
+    local edit = io.read()
+    if edit == 'y' then
+      stmt = db:prepare("UPDATE movies SET imdb=?, name=?, year=?, hash=?, poster=? WHERE rowid=?")
+      stmt:bind(1, imdb)
+      stmt:bind(2, name)
+      stmt:bind(3, year)
+      stmt:bind(4, hash)
+      stmt:bind_blob(5, poster_bytes)
+      stmt:bind(6, rowid)
+      stmt_status = stmt:step()
+      stmt:finalize()
+      if stmt_status == sqlite.DONE then
+        print("[!] edited")
+      else
+        print("[!] error not edited")
+      end
+    else
+      print("[!] not edited")
+    end
+  else
+    stmt:finalize()
+    print("[!] id not found")
+  end
+end
+
 local function delete_movie()
   io.write("[?] rowid: ")
   local rowid = io.read()
@@ -139,6 +211,7 @@ local modes = {
   n = create_table,
   a = add_movie,
   l = list_movies,
+  e = edit_movie,
   d = delete_movie,
   o = export_all_movies
 }
