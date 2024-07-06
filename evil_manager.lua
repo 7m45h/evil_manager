@@ -25,17 +25,19 @@ local function add_movie()
   print('[?]')
   io.write('    imdb: ')
   local imdb = io.read()
-  local sql_statement = db:prepare('SELECT imdb, name, year FROM movies WHERE imdb=?')
-  sql_statement:bind(1, imdb)
-  local stmt_status = sql_statement:step()
+  local stmt = db:prepare('SELECT imdb, name, year FROM movies WHERE imdb=?')
+  stmt:bind(1, imdb)
+  local stmt_status = stmt:step()
   if stmt_status == sqlite.ROW then
-    local existing_row = sql_statement:get_named_values()
+    local existing_row = stmt:get_named_values()
+    stmt:finalize()
     print("\n[!] allready exists")
     print(string.format("    imdb: %s", existing_row.imdb))
     print(string.format("    name: %s", existing_row.name))
     print(string.format("    year: %d", existing_row.year))
 
   elseif stmt_status == sqlite.DONE then
+    stmt:finalize()
     io.write('    name: ')
     local name = io.read()
     io.write('    year: ')
@@ -51,6 +53,33 @@ local function add_movie()
     print(string.format("    year: %d", year))
     print(string.format("    hash: %s", hash))
     print(string.format("    imge: %s", poster_path))
+
+    local poster_file = assert(io.open(poster_path, "rb"))
+    local poster_bytes
+    if poster_file then
+      poster_bytes = poster_file:read("a")
+      poster_file:close()
+    end
+
+    if poster_bytes then
+      io.write('[?] write to db (y/N): ')
+      local write = io.read()
+      if write == 'y' then
+        stmt = db:prepare("INSERT INTO movies VALUES (?, ?, ?, ?, ?)")
+        stmt:bind(1, imdb)
+        stmt:bind(2, name)
+        stmt:bind(3, year)
+        stmt:bind(4, hash)
+        stmt:bind_blob(5, poster_bytes)
+        stmt_status = stmt:step()
+        if stmt_status ~= sqlite.DONE then
+          print("[!] add movie failed")
+        end
+        stmt:finalize()
+      else
+        print("\n[!] did not wrote to db")
+      end
+    end
   end
 end
 
