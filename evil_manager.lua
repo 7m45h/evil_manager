@@ -11,7 +11,7 @@ local parser = argparse()
 parser:argument()
   :name "mode"
   :description "n: new table a: add l: list all e: edit d: delete o: toml output"
-  :choices { 'n', 'a', 'l', 'd' }
+  :choices { 'n', 'a', 'l', 'd', 'o' }
 
 local args = parser:parse()
 
@@ -118,11 +118,29 @@ local function delete_movie()
   end
 end
 
+local function export_all_movies()
+  local toml_file = assert(io.open("./movies.toml", "w"))
+  if toml_file then
+    local toml_output = ''
+    for imdb, name, year, poster_bytes in db:urows("SELECT imdb, name, year, poster FROM movies ORDER BY name") do
+      toml_output = toml_output .. string.format('[[movies]]\nimdb = "%s"\nname = "%s"\nyear = "%d"\n', imdb, name, year)
+      local poster_file = assert(io.open(string.format("./outputs/%s.jpg", imdb), "wb"))
+      if poster_file then
+        poster_file:write(poster_bytes)
+        poster_file:close()
+      end
+    end
+    toml_file:write(toml_output)
+    toml_file:close()
+  end
+end
+
 local modes = {
   n = create_table,
   a = add_movie,
   l = list_movies,
-  d = delete_movie
+  d = delete_movie,
+  o = export_all_movies
 }
 
 local action = modes[args.mode]
