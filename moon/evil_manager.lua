@@ -4,6 +4,7 @@ local argparse = require("argparse")
 local sqlite   = require("lsqlite3")
 
 local file_manager = require("file_manager")
+local base_manager = require("base_manager")
 
 local parser = argparse()
   :name "evil_manager"
@@ -27,19 +28,14 @@ local function add_movie()
   print("[?]")
   io.write("    imdb: ")
   local imdb = io.read()
-  local stmt = db:prepare("SELECT imdb, name, year FROM movies WHERE imdb=?")
-  stmt:bind(1, imdb)
-  local stmt_status = stmt:step()
-  if stmt_status == sqlite.ROW then
-    local existing_row = stmt:get_named_values()
-    stmt:finalize()
-    print("\n[!] allready exists")
-    print(string.format("    imdb: %s", existing_row.imdb))
-    print(string.format("    name: %s", existing_row.name))
-    print(string.format("    year: %d", existing_row.year))
+  local existing_row = base_manager.get_row(db, "SELECT imdb, name, year FROM movies WHERE imdb=?", imdb)
+  if existing_row then
+    print("\n[!] allready exists\n")
+    print(string.format("    imdb: %s", existing_row[1].imdb))
+    print(string.format("    name: %s", existing_row[1].name))
+    print(string.format("    year: %d", existing_row[1].year))
 
-  elseif stmt_status == sqlite.DONE then
-    stmt:finalize()
+  else
     io.write("    name: ")
     local name = io.read()
     io.write("    year: ")
@@ -62,13 +58,13 @@ local function add_movie()
       io.write("[?] write to db (y/N): ")
       local write = io.read()
       if write == 'y' then
-        stmt = db:prepare("INSERT INTO movies VALUES (?, ?, ?, ?, ?)")
+        local stmt = db:prepare("INSERT INTO movies VALUES (?, ?, ?, ?, ?)")
         stmt:bind(1, imdb)
         stmt:bind(2, name)
         stmt:bind(3, year)
         stmt:bind(4, hash)
         stmt:bind_blob(5, poster_bytes)
-        stmt_status = stmt:step()
+        local stmt_status = stmt:step()
         if stmt_status ~= sqlite.DONE then
           print("[!] add movie failed")
         end
@@ -81,24 +77,26 @@ local function add_movie()
 end
 
 local function list_movies()
-  for rowid, imdb, name, year, hash in db:urows("SELECT rowid, imdb, name, year, hash FROM movies") do
-    print(string.format("[%04d]  %-10s  %-55s  %4d  %s", rowid, imdb, name, year, hash))
+  local movies = base_manager.get_row(db, "SELECT rowid, imdb, name, year, hash FROM movies")
+  if movies then
+    for i, movie in ipairs(movies) do
+      print(string.format("[%04d] EL%08d  %-10s  %-55s  %4d  %s", i, movie.rowid, movie.imdb, movie.name, movie.year, movie.hash))
+    end
   end
 end
 
 local function edit_movie()
-  for rowid, imdb, name, year in db:urows("SELECT rowid, imdb, name, year FROM movies") do
-    print(string.format("[%04d]  %-10s  %-55s  %4d", rowid, imdb, name, year))
+  local movies = base_manager.get_row(db, "SELECT rowid, imdb, name, year FROM movies")
+  if movies then
+    for i, movie in ipairs(movies) do
+      print(string.format("[%04d] EL%08d  %-10s  %-55s  %4d", i, movie.rowid, movie.imdb, movie.name, movie.year))
+    end
   end
 
   io.write("\n[?] rowid: ")
   local rowid = io.read()
-  local stmt = db:prepare("SELECT imdb, name, year, hash, poster FROM movies WHERE rowid=?")
-  stmt:bind(1, rowid)
-  local stmt_status = stmt:step()
-  if stmt_status == sqlite.ROW then
-    local existing_row = stmt:get_named_values()
-    stmt:finalize()
+  local existing_row = base_manager.get_row(db, "SELECT imdb, name, year, hash, poster FROM movies WHERE rowid=?", rowid)
+  if existing_row then
     io.write("    imdb: ")
     local imdb = io.read()
     io.write("    name: ")
@@ -110,10 +108,10 @@ local function edit_movie()
     io.write("    poster_path: ")
     local poster_path = io.read()
 
-    if imdb == '' then imdb = existing_row.imdb end
-    if name == '' then name = existing_row.name end
-    if year == '' then year = existing_row.year end
-    if hash == '' then hash = existing_row.hash end
+    if imdb == '' then imdb = existing_row[1].imdb end
+    if name == '' then name = existing_row[1].name end
+    if year == '' then year = existing_row[1].year end
+    if hash == '' then hash = existing_row[1].hash end
 
     local poster_bytes
     if poster_path == '' then
@@ -131,14 +129,14 @@ local function edit_movie()
     io.write("\n[?] edit (y/N): ")
     local edit = io.read()
     if edit == 'y' then
-      stmt = db:prepare("UPDATE movies SET imdb=?, name=?, year=?, hash=?, poster=? WHERE rowid=?")
+      local stmt = db:prepare("UPDATE movies SET imdb=?, name=?, year=?, hash=?, poster=? WHERE rowid=?")
       stmt:bind(1, imdb)
       stmt:bind(2, name)
       stmt:bind(3, year)
       stmt:bind(4, hash)
       stmt:bind_blob(5, poster_bytes)
       stmt:bind(6, rowid)
-      stmt_status = stmt:step()
+      local stmt_status = stmt:step()
       stmt:finalize()
       if stmt_status == sqlite.DONE then
         print("[!] edited")
@@ -149,7 +147,6 @@ local function edit_movie()
       print("[!] not edited")
     end
   else
-    stmt:finalize()
     print("[!] id not found")
   end
 end
@@ -157,19 +154,15 @@ end
 local function delete_movie()
   io.write("[?] rowid: ")
   local rowid = io.read()
-  local stmt = db:prepare("SELECT imdb, name, year FROM movies WHERE rowid=?")
-  stmt:bind(1, rowid)
-  local stmt_status = stmt:step()
-  if stmt_status == sqlite.ROW then
-    local existing_row = stmt:get_named_values()
-    stmt:finalize()
-    print(string.format("[!] %s %s %d", existing_row.imdb, existing_row.name, existing_row.year))
+  local movie = base_manager.get_row(db, "SELECT imdb, name, year FROM movies WHERE rowid=?", rowid)
+  if movie then
+    print(string.format("[!] %s %s %d", movie[1].imdb, movie[1].name, movie[1].year))
     io.write("[?] delete (y/N): ")
     local delete = io.read()
     if delete == 'y' then
-      stmt = db:prepare("DELETE FROM movies WHERE rowid=?")
+      local stmt = db:prepare("DELETE FROM movies WHERE rowid=?")
       stmt:bind(1, rowid)
-      stmt_status = stmt:step()
+      local stmt_status = stmt:step()
       stmt:finalize()
       if stmt_status == sqlite.DONE then
         print("[!] done")
@@ -178,16 +171,18 @@ local function delete_movie()
       end
     end
   else
-    stmt:finalize()
     print("[!] movie not found")
   end
 end
 
 local function export_all_movies()
   local toml_output = ''
-  for imdb, name, year, poster_bytes in db:urows("SELECT imdb, name, year, poster FROM movies ORDER BY name") do
-    toml_output = toml_output .. string.format('[[movies]]\nimdb = "%s"\nname = "%s"\nyear = "%d"\n', imdb, name, year)
-    file_manager.write(string.format("../outputs/%s.jpg", imdb), poster_bytes)
+  local movies = base_manager.get_row(db, "SELECT imdb, name, year, poster FROM movies ORDER BY name")
+  if movies then
+    for _, movie in ipairs(movies) do
+      toml_output = toml_output .. string.format('[[movies]]\nimdb = "%s"\nname = "%s"\nyear = "%d"\n', movie.imdb, movie.name, movie.year)
+      file_manager.write(string.format("../outputs/%s.jpg", movie.imdb), movie.poster)
+    end
   end
   file_manager.write("../movies.toml", toml_output)
 end
