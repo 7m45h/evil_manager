@@ -20,7 +20,7 @@ def addMovie():
     print("[?]")
     imdb = input("    imdb: ")
     existingRow = CUR.execute("SELECT imdb, name, year FROM movies WHERE imdb=?", (imdb,)).fetchone()
-    if existing_row is None:
+    if existingRow is None:
         name = input("    name: ")
         year = input("    year: ")
         hash = input("    hash: ").upper()
